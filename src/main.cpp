@@ -26,78 +26,14 @@ class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
             // Get the assembly string
             StringRef AsmString = Asm->getAsmString();
 
-            const SourceManager &SM = Context->getSourceManager();
-            SourceLocation Loc = Asm->getBeginLoc();
-            PresumedLoc PLoc = SM.getPresumedLoc(Loc);
-            if (!PLoc.isValid()) {
-                llvm::errs()
-                    << "Failed to obtain filename from asm block" << "\n";
-            }
-
-            // Print the current assembly for debugging
-            llvm::errs() << "Original Assembly: " << AsmString << "\n";
-
-            // Modify the assembly (example: append a comment)
-            std::string ModifiedAsm = "__asm {\n";
-            ModifiedAsm += ".file 1 ";
-            ModifiedAsm += "\"";
-            ModifiedAsm += PLoc.getFilename();
-            ModifiedAsm += "\"";
-            ModifiedAsm += "\n.loc 1 7\n";
-            ModifiedAsm += AsmString;
-
-            char *buffer = new char[ModifiedAsm.length() + 1];
-            memset(buffer, 0, ModifiedAsm.length() + 1);
-            memcpy(buffer, ModifiedAsm.c_str(), ModifiedAsm.length());
-
-            llvm::errs() << "New Assembly: " << ModifiedAsm << "\n";
-
             SourceLocation StartLoc = Asm->getBeginLoc();
-            // StartLoc = TheRewriter.getSourceMgr().getFileLoc(StartLoc);
             SourceLocation EndLoc = Asm->getEndLoc();
-            // EndLoc = TheRewriter.getSourceMgr().getFileLoc(EndLoc);
-            //
-            StartLoc.dump(SM);
-            EndLoc.dump(SM);
 
-            StartLoc = SM.getSpellingLoc(StartLoc);
-            EndLoc = SM.getSpellingLoc(EndLoc);
+            llvm::errs() << TheRewriter.isRewritable(StartLoc) << "\n";
 
-            StartLoc.dump(SM);
-            EndLoc.dump(SM);
-
-            if (StartLoc.isInvalid() || EndLoc.isInvalid()) {
-                llvm::errs() << "Invalid source location.\n";
-                return true;
-            }
-
-            if (!SM.isBeforeInTranslationUnit(StartLoc, EndLoc)) {
-                llvm::errs()
-                    << "Invalid range: StartLoc is not before EndLoc.\n";
-                return true; // Skip this asm statement
-            }
-
-            if (SM.getFileID(StartLoc) != SM.getFileID(EndLoc)) {
-                llvm::errs() << "Invalid range: StartLoc and EndLoc are in "
-                                "different files.\n";
-                return true; // Skip this asm statement
-            }
-
-            llvm::errs() << StartLoc.isMacroID() << "\n";
-            llvm::errs() << StartLoc.isMacroID() << "\n";
-
-            llvm::errs() << "StartLoc: ";
-            int size = TheRewriter.getRangeSize(SourceRange(StartLoc, EndLoc));
-            llvm::errs() << size << "\n";
-
-            if (SM.isBeforeInTranslationUnit(StartLoc, EndLoc)) {
-                llvm::errs() << "Valid range.\n";
-            } else {
-                llvm::errs() << "Invalid range.\n";
-            }
-
-            bool result =
-                TheRewriter.ReplaceText(SourceRange(StartLoc, EndLoc), buffer);
+            // This will segfault
+            bool result = TheRewriter.ReplaceText(SourceRange(StartLoc, EndLoc),
+                                                  AsmString);
             llvm::errs() << "Replace result: " << result << "\n";
         }
         return true;
@@ -110,7 +46,7 @@ class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
 
 class MyASTConsumer : public ASTConsumer {
   public:
-    explicit MyASTConsumer(ASTContext *Context, Rewriter R)
+    explicit MyASTConsumer(ASTContext *Context, Rewriter &R)
         : Visitor(Context, R) {}
 
     virtual void HandleTranslationUnit(ASTContext &Context) override {
