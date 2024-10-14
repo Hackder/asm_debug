@@ -26,10 +26,15 @@ class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
             // Get the assembly string
             StringRef AsmString = Asm->getAsmString();
 
-            SourceLocation StartLoc = Asm->getBeginLoc();
+            SourceLocation StartLoc = Asm->getAsmLoc();
             SourceLocation EndLoc = Asm->getEndLoc();
 
-            llvm::errs() << TheRewriter.isRewritable(StartLoc) << "\n";
+            assert(StartLoc.isValid());
+            assert(EndLoc.isValid());
+            assert(TheRewriter.isRewritable(StartLoc));
+            assert(TheRewriter.isRewritable(EndLoc));
+            assert(StartLoc.isMacroID() == false);
+            assert(EndLoc.isMacroID() == false);
 
             // This will segfault
             bool result = TheRewriter.ReplaceText(SourceRange(StartLoc, EndLoc),
