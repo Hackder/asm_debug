@@ -26,19 +26,12 @@ class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
             // Get the assembly string
             StringRef AsmString = Asm->getAsmString();
 
-            SourceLocation StartLoc = Asm->getAsmLoc();
+            SourceLocation StartLoc = Asm->getBeginLoc();
             SourceLocation EndLoc = Asm->getEndLoc();
 
-            assert(StartLoc.isValid());
-            assert(EndLoc.isValid());
-            assert(TheRewriter.isRewritable(StartLoc));
-            assert(TheRewriter.isRewritable(EndLoc));
-            assert(StartLoc.isMacroID() == false);
-            assert(EndLoc.isMacroID() == false);
-
             // This will segfault
-            bool result = TheRewriter.ReplaceText(SourceRange(StartLoc, EndLoc),
-                                                  AsmString);
+            bool result =
+                TheRewriter.ReplaceText(SourceRange(StartLoc, EndLoc), "asdf");
             llvm::errs() << "Replace result: " << result << "\n";
         }
         return true;
@@ -51,14 +44,16 @@ class MyASTVisitor : public RecursiveASTVisitor<MyASTVisitor> {
 
 class MyASTConsumer : public ASTConsumer {
   public:
-    explicit MyASTConsumer(ASTContext *Context, Rewriter &R)
-        : Visitor(Context, R) {}
+    explicit MyASTConsumer(ASTContext *Context)
+        : TheRewriter(Context->getSourceManager(), Context->getLangOpts()),
+          Visitor(Context, TheRewriter) {}
 
     virtual void HandleTranslationUnit(ASTContext &Context) override {
         Visitor.TraverseDecl(Context.getTranslationUnitDecl());
     }
 
   private:
+    Rewriter TheRewriter;
     MyASTVisitor Visitor;
 };
 
@@ -66,18 +61,13 @@ class MyPluginAction : public PluginASTAction {
   protected:
     std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                    llvm::StringRef) override {
-        TheRewriter.setSourceMgr(CI.getSourceManager(), CI.getLangOpts());
-        return std::make_unique<MyASTConsumer>(&CI.getASTContext(),
-                                               TheRewriter);
+        return std::make_unique<MyASTConsumer>(&CI.getASTContext());
     }
 
     bool ParseArgs(const CompilerInstance &CI,
                    const std::vector<std::string> &args) override {
         return true;
     }
-
-  private:
-    Rewriter TheRewriter;
 };
 
 } // namespace

@@ -19,10 +19,10 @@ include_directories(${LLVM_INCLUDE_DIRS})
 
 add_library(asm_debug SHARED src/main.cpp)
 set_target_properties(asm_debug PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-fno-rtti -fPIC"
     LINK_FLAGS "-shared"
 )
 
 target_link_libraries(asm_debug PRIVATE LLVM clang)
-target_link_libraries(asm_debug PRIVATE LLVM clangSupport clangFrontend clangAST clangBasic clangRewrite)
+target_link_libraries(asm_debug PRIVATE LLVM clangSupport clangFrontend clangAST clangBasic clangRewrite clangTooling)
 
